@@ -41,23 +41,26 @@ keep <- c(
 )
 
 crs <- crs[, ..keep]
+
 crs <- crs[
   FlowName == "ODA Loans" 
   |
     FlowName == "ODA Grants"
   | 
     FlowName == "Equity Investment"
-  | 
-    FlowName == "Private Development Finance"
+  #| 
+  #  FlowName == "Private Development Finance"
   ]
 
 crs <- crs[as.character(Year) >= 2014]
 
 major.keywords <- c(
-  "girl.*education",
-  "education.*girl",
-  "inclusive.*education"
-)
+  "girl.*education|education.*girl",
+  "inclusive.*education|education.*inclusive",
+  "gender.*education|education.*gender",
+  "equitable.*education|education.*equitable",
+  "equality.*education|education.*equality"
+  )
 
 minor.keywords <- c(
   #"keyword3"
@@ -69,7 +72,7 @@ disqualifying.keywords <- c(
   #"keyword5"
   #,
   #"keyword6"
-  )
+)
 
 disqualifying.sectors <- c(
   #"sector1"
@@ -77,10 +80,15 @@ disqualifying.sectors <- c(
   #"sector2"
 )
 
+crs_education <- crs[grepl("Education", PurposeName)]
+crs_education_gender <- crs_education[Gender %in% c(1, 2)]
+
 crs$relevance <- "None"
 crs[grepl(paste(minor.keywords, collapse = "|"), tolower(paste(crs$ProjectTitle, crs$ShortDescription, crs$LongDescription)))]$relevance <- "Minor"
 crs[grepl(paste(major.keywords, collapse = "|"), tolower(crs$LongDescription))]$relevance <- "Minor"
 crs[grepl(paste(major.keywords, collapse = "|"), tolower(paste(crs$ShortDescription, crs$ProjectTitle)))]$relevance <- "Major"
+
+crs_new <- crs[relevance != "None" & !(CrsID %in% crs_education_gender$CrsID)]
 
 crs$check <- "No"
 crs[relevance == "Minor"]$check <- "potential false positive"
@@ -89,12 +97,6 @@ crs[relevance != "None"][grepl(paste(disqualifying.keywords, collapse = "|"), to
 
 crs[relevance != "None"][grepl(paste(disqualifying.keywords, collapse = "|"), tolower(paste(crs[relevance != "None"]$ProjectTitle, crs[relevance != "None"]$ShortDescription, crs[relevance != "None"]$LongDescription)))]$relevance <- "None"
 crs[relevance != "None"][PurposeName %in% disqualifying.sectors]$relevance <- "None"
-
-crs$Gender <- as.character(crs$Gender)
-crs[is.na(Gender)]$Gender <- "0"
-crs[Gender != "1" & Gender != "2"]$Gender <- "No Gender component"
-crs[Gender == "1"]$Gender <- "Partial Gender component"
-crs[Gender == "2"]$Gender <- "Major Gender component"
 
 crs_output <- crs
 rm(crs)
@@ -113,8 +115,3 @@ fwrite(crs.sectors, "output/crs sectors.csv")
 fwrite(crs.flows, "output/crs flows.csv")
 fwrite(crs.donors, "output/crs donors.csv")
 fwrite(crs.recipients, "output/crs recipients.csv")
-
-tocheck.positive <- crs_output[check == "potential false positive"]
-tocheck.negative <- crs_output[check == "potential false negative"]
-fwrite(tocheck.positive, "output/crs check positives.csv")
-fwrite(tocheck.negative, "output/crs check negatives.csv")
