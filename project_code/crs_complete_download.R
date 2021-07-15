@@ -6,16 +6,32 @@ lapply(c("functions/split_and_save.R"), source)
 
 setwd("..")
 
+
 base.url <- "https://stats.oecd.org/DownloadFiles.aspx?DatasetCode=CRS1"
 
 downloads <- html_attr(html_nodes(read_html(base.url), "a"), "onclick")
+years <- html_text(html_nodes(read_html(base.url), "a"))
+
 downloads <- gsub("return OpenFile|[(][)];", "", downloads)
 downloads <- gsub("_", "-", downloads)
 downloads <- paste0("http://stats.oecd.org/FileView2.aspx?IDFile=", downloads)
 
+years <- gsub("CRS | / SNPC.*", "", years)
+start_years <- as.numeric(substr(years, 0, 4))
+end_years <- as.numeric(paste0(substr(years, 0, 2), substr(years, nchar(years)-1, nchar(years))))
+
+dt <- data.table(start_year = start_years, end_year = end_years, download = downloads)
+
+##########
+start <- 2000
+end <- 2019
+#########
+
+chosen_years <- dt[end_year >= start & start_year <= end]
+
 crs <- list()
-for(i in 1:length(downloads)){
-  download <- downloads[i]
+for(i in 1:nrow(chosen_years)){
+  download <- chosen_years$download[i]
   temp <- tempfile()
   download.file(download, temp, mode="wb", quiet=T)
   filename <- unzip(temp, list=T)$Name
