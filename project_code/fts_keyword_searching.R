@@ -45,15 +45,25 @@ fts <- fts[, ..keep]
 fts <- fts[as.character(year) >= 2014]
 
 major.keywords <- c(
+<<<<<<< Updated upstream
    "reproductive.",
    "contraceptive.",
   "birth control.",
   "gender.",
   "female empowerment.",
+=======
+  "reproductive.",
+  "contraceptive.",
+  "birth control.",
+  "gender.",
+  "female empowerment.",
+  "empowerment* women.",
+>>>>>>> Stashed changes
   "domestic violence.",
   "gender-based.* violence| violence.*gender.",
   "girl.*women. |women.* girl.",
   "GBV.",
+<<<<<<< Updated upstream
   "women.* informal| informal.* women",
   "women",
   "woman",
@@ -62,6 +72,19 @@ major.keywords <- c(
   "maternal",
   "SRH"
   
+=======
+
+  "women.* informal| informal.* women",
+  "women",
+  "woman",
+  "girl",
+  "female",
+  "maternal",
+  "SRH.",
+  "ASRH.",
+  "mother",
+  "child marriage"
+>>>>>>> Stashed changes
   
 )
 
@@ -74,8 +97,13 @@ minor.keywords <- c(
 disqualifying.keywords <- c(
   "\\bmen\\b",
   "\\bman\\b",
+<<<<<<< Updated upstream
   "boy.",
   "male."
+=======
+  "\\bboys\\b",
+  "\\bmale\\b."
+>>>>>>> Stashed changes
 
 )
 
@@ -87,14 +115,32 @@ fts$relevance <- "None"
 fts[grepl(paste(minor.keywords, collapse = "|"), tolower(paste(fts$description)))]$relevance <- "Minor"
 fts[grepl(paste(major.keywords, collapse = "|"), tolower(paste(fts$description)))]$relevance <- "Major"
 
+
 fts$check <- "No"
 fts[relevance == "Minor"]$check <- "potential false positive"
 #fts[relevance != "None"][PurposeName %in% disqualifying.sectors]$check <- "potential false negative"
 fts[relevance != "None"][grepl(paste(disqualifying.keywords, collapse = "|"), tolower(paste(fts[relevance != "None"]$ProjectTitle, fts[relevance != "None"]$description, fts[relevance != "None"]$description)))]$check <- "potential false negative"
+<<<<<<< Updated upstream
 
 #fts[relevance != "None"][grepl(paste(disqualifying.keywords, collapse = "|"), tolower(paste(fts[relevance != "None"]$ProjectTitle, fts[relevance != "None"]$ShortDescription, fts[relevance != "None"]$LongDescription)))]$relevance <- "Nonefts[relevance != "None"][PurposeName %in% disqualifying.sectors]$relevance <- "None"
+=======
+
+#fts[relevance != "None"][grepl(paste(disqualifying.keywords, collapse = "|"), tolower(paste(fts[relevance != "None"]$ProjectTitle, fts[relevance != "None"]$ShortDescription, fts[relevance != "None"]$LongDescription)))]$relevance <- "Nonefts[relevance != "None"][PurposeName %in% disqualifying.sectors]$relevance <- "None"
+
+fts[, keywordcount := unlist(lapply(description, function(x) sum(gregexpr(paste0(major.keywords, collapse = "|"), x)[[1]] > 0, na.rm = T)))]
+fts[, disqkeywordcount := unlist(lapply(description, function(x) sum(gregexpr(paste0(disqualifying.keywords, collapse = "|"), x)[[1]] > 0, na.rm = T)))]
+
+
+
+
+>>>>>>> Stashed changes
 
 fts_output <- fts
 rm(fts)
 
+<<<<<<< Updated upstream
 #fts.years <- dcast.data.table(fts_output, year ~ relevance, value.var = "USD_Disbursement_Defl",fun.aggregate = function(x) sum(x, na.rm=T))
+=======
+#fts.years <- dcast.data.table(fts_output, year ~ relevance, value.var = "USD_Disbursement_Defl",fun.aggregate = function(x) sum(x, na.rm=T))
+
+>>>>>>> Stashed changes
