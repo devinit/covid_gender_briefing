@@ -11,7 +11,7 @@ fts_raw <- fts_get_flows(year = c(2019,2020,2021))
 fts <- fts_unnest_flows(fts_raw)
 
 #Split rows into individual years where multiple are recorded
-fts[, year := destinationObjects_UsageYear.name]
+fts[, year := sourceObjects_UsageYear.name]
 fts <- fts_split_rows(fts, value.cols = "amountUSD", split.col = "year", split.pattern = "; ", remove.unsplit = T)
 
 #Assign a sector from available fields

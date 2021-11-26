@@ -7,8 +7,9 @@ setwd(dirname(getActiveDocumentContext()$path))
 setwd("..")
 
 fts <- fread("project_data/fts_flows.csv", encoding = "UTF-8")
-codenames <- fread("project_data/fts_codenames.csv", encoding = "UTF-8")
-deflators <- fread("project_data/fts_deflators.csv", encoding = "UTF-8")
+rec_codes <- fread("project_data/fts_recipientcodename.csv", encoding = "UTF-8")
+channels <- fread("project_data/fts_deliverychannels.csv", encoding = "UTF-8")
+ngo_types <- fread("project_data/fts_ngotype.csv", encoding = "UTF-8")[ngotype == "Southern International NGO", ngotype := "Southern international NGO"][ngotype == "Undefined NGO", ngotype := "Uncategorized NGO"]
 source("https://raw.githubusercontent.com/devinit/di_script_repo/main/gha/FTS/fts_split_rows.R")
 
 keep <- c(
@@ -17,6 +18,8 @@ keep <- c(
   "description"
   ,
   "year"
+  ,
+  "budgetYear"
   ,
   "flowType"
   ,
@@ -27,6 +30,12 @@ keep <- c(
   "amountUSD"
   ,
   "sourceObjects_Organization.name"
+  ,
+  "sourceObjects_Organization.id"
+  ,
+  "sourceObjects_Organization.organizationTypes"
+  ,
+  "sourceObjects_Location.name"
   ,
   "destinationObjects_Location.name"
   ,
@@ -41,6 +50,8 @@ keep <- c(
   "destinationObjects_GlobalCluster.name"
   ,
   "destinationObjects_Cluster.name"
+  ,
+  "destinationObjects_Organization.name"
   ,
   "destinationObjects_Organization.organizationTypes"
   ,
@@ -71,36 +82,74 @@ major.keywords <- c(
   "SRH.",
   "ASRH.",
   "mother",
-  "child marriage"
-)
-
-minor.keywords <- c(
-  #"keyword3"
-  #,
-  #"keyword4"
+  "child marriage",
+  "salud reproductiva.",
+  "obstetricia.",
+  "Anticonceptivo.",
+  "preservativos.",
+  "domestic violence.",
+  "sexo.",
+  "mujer.",
+  "empoderamiento femenino",
+  "violencia sexual",
+  "hija.",
+  "chica.",
+  "mujer.",
+  "feminino",
+  "feminine",
+  "femininas",
+  "salud sexual.",
+  "contraceptif.",
+  "Sexe",
+  "Autonomisation des femmes",
+  "Violence domestique",
+  "violence familiale",
+  "Violence sexiste",
+  "fille.",
+  "femme.",
+  "femelle.",
+  "Maternel.",
+  "maternelle.",
+  "mother",
+  "madre",
+  "child marriage",
+  "mariage d'enfants",
+  "mariage des enfants",
+  "matrimonio infantil",
+  "niña",
+  "niñas"
 )
 
 disqualifying.keywords <- c(
   "\\bmen\\b",
   "\\bman\\b",
   "\\bboys\\b",
-  "\\bmale\\b."
+  "\\bmale\\b.",
+  "\\bmasculino\\b",
+  "\\bhombre\\b",
+  "\\bhombres\\b",
+  "\\bchico\\b.",
+  "chicos",
+  "masculin",
+  "hommes",
+  "homme",
+  "niño",
+  "garçon"
 )
 
-
 fts$relevance <- "None"
-fts[grepl(paste(minor.keywords, collapse = "|"), tolower(paste(fts$description)))]$relevance <- "Minor"
-fts[grepl(paste(major.keywords, collapse = "|"), tolower(paste(fts$description)))]$relevance <- "Major"
+
+fts[sector == "Protection - Gender-Based Violence"]$relevance <- "Major: GBV"
+
+fts[grepl(tolower(paste(major.keywords, collapse = "|")), tolower(paste(fts$description)))]$relevance <- "Major: Keyword"
 
 fts$check <- "No"
-fts[relevance == "Minor"]$check <- "potential false positive"
-fts[relevance != "None"][grepl(paste(disqualifying.keywords, collapse = "|"), tolower(paste(fts[relevance != "None"]$ProjectTitle, fts[relevance != "None"]$description, fts[relevance != "None"]$description)))]$check <- "potential false negative"
+fts[relevance != "None"][grepl(tolower(paste(disqualifying.keywords, collapse = "|")), tolower(paste(fts[relevance != "None"]$ProjectTitle, fts[relevance != "None"]$description, fts[relevance != "None"]$description)))]$check <- "potential false negative"
 
-fts[, keywordcount := unlist(lapply(description, function(x) sum(gregexpr(paste0(major.keywords, collapse = "|"), x)[[1]] > 0, na.rm = T)))]
-fts[, disqkeywordcount := unlist(lapply(description, function(x) sum(gregexpr(paste0(disqualifying.keywords, collapse = "|"), x)[[1]] > 0, na.rm = T)))]
+fts[, keywordcount := unlist(lapply(description, function(x) sum(gregexpr(tolower(paste0(major.keywords, collapse = "|")), x)[[1]] > 0, na.rm = T)))]
+fts[, disqkeywordcount := unlist(lapply(description, function(x) sum(gregexpr(tolower(paste0(disqualifying.keywords, collapse = "|")), x)[[1]] > 0, na.rm = T)))]
 
 fts_output <- fts
-rm(fts)
 
 #Global sector assigment
 sector.decode <- (fts_output[!(sector %in% fts_output$destinationObjects_GlobalCluster.name), .(sector = unique(sector), new_sector = NA_character_)])
@@ -117,20 +166,53 @@ sector.decode[is.na(new_sector), new_sector := "Other"]
 
 fts_output[sector %in% sector.decode$sector, sector := merge(fts_output[sector %in% sector.decode$sector, .(sector)], sector.decode, by = "sector")$new_sector]
 fts_output[sector == "", sector := "Unspecified"]
-fts_output[grepl("Protection", sector), sector := "Protection"]
+#fts_output[grepl("Protection", sector), sector := "Protection"]
 
-#Split rows into individual recipient type where multiple are recorded
-fts_output$recipient_type <- apply(matrix(paste(as.matrix(fts_output[, tstrsplit(destinationObjects_Organization.organizationTypes, "; ")]), as.matrix(fts_output[, tstrsplit(destinationObjects_Organization.organizationSubTypes, "; ")]), sep = ": "), nrow = nrow(fts_output)), 1, function(x) gsub("NA|: NA|; NA: NA|: NULL", "", paste(x, collapse = "; ")))
-fts_output <- fts_split_rows(fts_output, value.cols = "amountUSD", split.col = "recipient_type", split.pattern = "; ", remove.unsplit = T)
+#Merge recipient code lists
+rec_orgs <- merge(ngo_types, channels, by = c("Recipient.Organization", "year"), all = T)
+rec_orgs <- merge(rec_orgs, rec_codes, by = c("Recipient.Organization", "year"), all = T)
+rec_orgs[is.na(rec_orgs)] <- ""
 
-#Merge deflators
-fts_output <- merge(fts_output[, Donor := gsub(", Government of", "", sourceObjects_Organization.name)], codenames, by = "Donor", all.x = T)
-fts_output[is.na(Donor), `Donor Country ID` := "Total DAC"]
+rec_orgs <- unique(rec_orgs[, -"year"])
 
-deflators[, Deflators := Deflators[!is.na(Deflators)], by = deflatortype][is.na(Deflators), Deflators := 1]
+fts_output <- merge(fts_output[, destinationObjects_Organization.name := gsub(", Government of", "", destinationObjects_Organization.name)], rec_orgs, by.x = c("destinationObjects_Organization.name"), by.y = c("Recipient.Organization"), all.x = T)
 
-fts_output <- merge(fts_output[, deflatortype := paste(`Donor Country ID`, sourceObjects_UsageYear.name)], deflators[, -"year"], by = "deflatortype", all.x = T)
-fts_output[, amountUSD_defl := amountUSD/Deflators]
-fts_output[, `:=` (deflatortype = NULL, Donor = NULL)]
+#NGO classification for those missing in codelist
+fts_output[ngotype == "" & destinationObjects_Organization.organizationTypes == "NGO", ngotype := gsub("^ |NGO |", "", paste(destinationObjects_Organization.organizationSubTypes, destinationObjects_Organization.organizationTypes))]
+fts_output[ngotype == "NGO", ngotype := "Uncategorized NGO"]
+fts_output[grepl(";", ngotype), ngotype := "Other"]
+fts_output[is.na(ngotype), ngotype := ""]
 
+#Split rows into individual donors where multiple are recorded
+fts_output <- fts_split_rows(fts_output, value.cols = "amountUSD", split.col = "sourceObjects_Organization.id", split.pattern = "; ", remove.unsplit = T)
+
+fts_orgs <- data.table(fromJSON("https://api.hpc.tools/v1/public/organization")$data)
+fts_orgs[, `:=` (type = ifelse(is.null(categories[[1]]$name), NA, categories[[1]]$name), location = ifelse(is.null(locations[[1]]$name), NA, locations[[1]]$name)), by = id]
+
+fts_orgs_gov <- fts_orgs[type == "Government", .(sourceObjects_Organization.id = id, donor_country = location)]
+
+#Manual development agency locations
+fts_orgs_gov <- rbind(fts_orgs_gov,
+                      data.table(sourceObjects_Organization.id = c("9946", "10399", "4058", "2987", "30", "6547"),
+                                 donor_country = c("France", "Qatar", "United States", "Germany", "United Arab Emirates", "Taiwan, Province of China"))
+)
+
+#Merge orgs types for deflators
+fts_output <- merge(fts_output, fts_orgs_gov, by = "sourceObjects_Organization.id", all.x = T)
+fts_output[is.na(donor_country), donor_country := "Total DAC"]
+
+#Add year where none recorded at source
+fts_output[is.na(year), year := budgetYear]
+
+deflators <- fread("project_data/usd_deflators_2021WEO.csv", encoding = "UTF-8", header = T)
+deflators <- melt.data.table(deflators, id.vars = c("name", "ISO3"))
+deflators <- deflators[, .(donor_country = name, year = as.numeric(as.character(variable)), deflator = value)]
+
+fts_output <- merge(fts_output, deflators, by = c("donor_country", "year"), all.x = T)
+
+fts_output[is.na(deflator)]$deflator <- merge(fts_output[is.na(deflator)][, -"deflator"], deflators[donor_country == "Total DAC", -"donor_country"], by = "year")$deflator
+
+fts_output[, amountUSD_defl := amountUSD/deflator]
+
+write.csv(fts_output, "fts_output.csv", fileEncoding = "UTF-8")
 #
