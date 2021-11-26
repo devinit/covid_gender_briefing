@@ -258,16 +258,16 @@ fts[sector == "Protection - Gender-Based Violence"]$relevance <- "Major: GBV"
 
 fts[grepl(paste(minor.keywords, collapse = "|"), tolower(paste(fts$description)))]$relevance <- "Minor: Keyword"
 fts[grepl(tolower(paste(major.keywords, collapse = "|")), tolower(paste(fts$description)))]$relevance <- "Major: Keyword"
-fts[grepl(paste(disqualifying.keywords, collapse = "|"), tolower(paste(fts$description)))]$relevance <- "disqualifying"
+#fts[grepl(paste(disqualifying.keywords, collapse = "|"), tolower(paste(fts$description)))]$relevance <- "disqualifying"
 
 fts[relevance == "Minor"]$check <- "weak keyword"
-fts[relevance != "None"][grepl(paste(disqualifying.keywords, collapse = "|"), tolower(paste(fts[relevance != "None"]$ProjectTitle, fts[relevance != "None"]$description, fts[relevance != "None"]$description)))]$check <- "potential false negative"
+#fts[relevance != "None"][grepl(paste(disqualifying.keywords, collapse = "|"), tolower(paste(fts[relevance != "None"]$ProjectTitle, fts[relevance != "None"]$description, fts[relevance != "None"]$description)))]$check <- "potential false negative"
 
-fts[, keywordcount := unlist(lapply(description, function(x) sum(gregexpr(paste0(major.keywords, collapse = "|"), x)[[1]] > 0, na.rm = T)))]
-fts[, disqkeywordcount := unlist(lapply(description, function(x) sum(gregexpr(paste0(disqualifying.keywords, collapse = "|"), x)[[1]] > 0, na.rm = T)))]
-fts[, minkeywordcount := unlist(lapply(description, function(x) sum(gregexpr(paste0(minor.keywords, collapse = "|"), x)[[1]] > 0, na.rm = T)))]
+fts[, keywordcount := unlist(lapply(tolower(description), function(x) sum(gregexpr(tolower(paste0(major.keywords, collapse = "|")), x)[[1]] > 0, na.rm = T)))]
+fts[, disqkeywordcount := unlist(lapply(tolower(description), function(x) sum(gregexpr(tolower(paste0(disqualifying.keywords, collapse = "|")), x)[[1]] > 0, na.rm = T)))]
+fts[, minkeywordcount := unlist(lapply(tolower(description), function(x) sum(gregexpr(tolower(paste0(minor.keywords, collapse = "|")), x)[[1]] > 0, na.rm = T)))]
 
-fts_output <- fts
+fts_output <- fts[grepl("Major", relevance) | (relevance == "Minor: Keyword" & minkeywordcount > disqkeywordcount)]
 
 #Global sector assigment
 sector.decode <- (fts_output[!(sector %in% fts_output$destinationObjects_GlobalCluster.name), .(sector = unique(sector), new_sector = NA_character_)])
