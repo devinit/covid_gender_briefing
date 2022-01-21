@@ -7,7 +7,6 @@ setwd(dirname(getActiveDocumentContext()$path))
 setwd("..")
 
 fts <- fread("project_data/fts_flows.csv", encoding = "UTF-8")
-source("https://raw.githubusercontent.com/devinit/di_script_repo/main/gha/FTS/fts_split_rows.R")
 
 keep <- c(
   "id"
@@ -16,33 +15,19 @@ keep <- c(
   ,
   "year"
   ,
-  "budgetYear"
-  ,
   "flowType"
   ,
   "keywords"
   ,
   "sector"
   ,
-  "amountUSD"
+  "multisector"
   ,
-  "sourceObjects_Organization.name"
-  ,
-  "sourceObjects_Organization.id"
-  ,
-  "sourceObjects_Organization.organizationTypes"
+  "amountUSD_defl"
   ,
   "sourceObjects_Location.name"
   ,
   "destinationObjects_Location.name"
-  ,
-  "sourceObjects_Emergency.name"
-  ,
-  "destinationObjects_Emergency.name"
-  ,
-  "sourceObjects_GlobalCluster.name"  
-  ,
-  "sourceObjects_UsageYear.name"
   ,
   "destinationObjects_GlobalCluster.name"
   ,
@@ -50,9 +35,7 @@ keep <- c(
   ,
   "destinationObjects_Organization.name"
   ,
-  "destinationObjects_Organization.organizationTypes"
-  ,
-  "destinationObjects_Organization.organizationSubTypes"
+  "destinationObjects_Plan.name"
 )
 
 fts <- fts[, ..keep]
