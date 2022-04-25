@@ -27,6 +27,8 @@ keep <- c(
   ,
   "sourceObjects_Location.name"
   ,
+  "sourceObjects_Organization.name"
+  ,
   "destinationObjects_Location.name"
   ,
   "destinationObjects_GlobalCluster.name"
@@ -34,6 +36,8 @@ keep <- c(
   "destinationObjects_Cluster.name"
   ,
   "destinationObjects_Organization.name"
+  ,
+  "destination_ngotype"
   ,
   "destinationObjects_Plan.name"
 )
@@ -234,8 +238,6 @@ disqualifying.keywords <- c(#
 )
 fts$relevance <- "None"
 
-fts[sector == "Protection - Gender-Based Violence"]$relevance <- "Major: GBV"
-
 fts[grepl(paste(minor.keywords, collapse = "|"), tolower(paste(fts$description)))]$relevance <- "Minor: Keyword"
 fts[grepl(tolower(paste(major.keywords, collapse = "|")), tolower(paste(fts$description)))]$relevance <- "Major: Keyword"
 #fts[grepl(paste(disqualifying.keywords, collapse = "|"), tolower(paste(fts$description)))]$relevance <- "disqualifying"
@@ -247,10 +249,14 @@ fts[, keywordcount := unlist(lapply(tolower(description), function(x) sum(gregex
 fts[, disqkeywordcount := unlist(lapply(tolower(description), function(x) sum(gregexpr(tolower(paste0(disqualifying.keywords, collapse = "|")), x)[[1]] > 0, na.rm = T)))]
 fts[, minkeywordcount := unlist(lapply(tolower(description), function(x) sum(gregexpr(tolower(paste0(minor.keywords, collapse = "|")), x)[[1]] > 0, na.rm = T)))]
 
-fts_output <- fts[grepl("Major", relevance) | (relevance == "Minor: Keyword" & minkeywordcount > disqkeywordcount)]
+fts[sector == "Protection - Gender-Based Violence"]$relevance <- "Major: GBV"
+
+fts[(relevance == "Minor: Keyword" & minkeywordcount <= disqkeywordcount), relevance := "None"]
+
+#fts <- fts[grepl("Major", relevance) | (relevance == "Minor: Keyword" & minkeywordcount > disqkeywordcount)]
 
 #Global sector assigment
-sector.decode <- (fts_output[!(sector %in% fts_output$destinationObjects_GlobalCluster.name), .(sector = unique(sector), new_sector = NA_character_)])
+sector.decode <- (fts[!(sector %in% fts$destinationObjects_GlobalCluster.name), .(sector = unique(sector), new_sector = NA_character_)])
 sector.decode[grepl("COVID-19", sector), new_sector := "COVID-19"]
 sector.decode[grepl("Health", sector), new_sector := "Health"]
 sector.decode[grepl("Emergency Livelihoods", sector), new_sector := "Early Recovery"]
@@ -262,9 +268,9 @@ sector.decode[grepl("Food Security|Sécurité Alimentaire|^Food$", sector, ignor
 sector.decode[grepl("Cluster not yet specified", sector, ignore.case = T), new_sector := "Unspecified"]
 sector.decode[is.na(new_sector), new_sector := "Other"]
 
-fts_output[sector %in% sector.decode$sector, sector := merge(fts_output[sector %in% sector.decode$sector, .(sector)], sector.decode, by = "sector")$new_sector]
-fts_output[sector == "", sector := "Unspecified"]
-fts_output[grepl("Protection", sector), sector := "Protection"]
+fts[sector %in% sector.decode$sector, sector := merge(fts[sector %in% sector.decode$sector, .(sector)], sector.decode, by = "sector")$new_sector]
+fts[sector == "", sector := "Unspecified"]
+#fts[grepl("Protection", sector), sector := "Protection"]
 
-write.csv(fts_output, "fts_output.csv", fileEncoding = "UTF-8", row.names = F)
+write.csv(fts, "fts_output.csv", fileEncoding = "UTF-8", row.names = F)
 #

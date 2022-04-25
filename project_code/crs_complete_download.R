@@ -23,8 +23,8 @@ end_years <- as.numeric(paste0(substr(years, 0, 2), substr(years, nchar(years)-1
 dt <- data.table(start_year = start_years, end_year = end_years, download = downloads)
 
 ##########
-start <- 2000
-end <- 2019
+start_year <- 2019
+end_year <- 2019
 #########
 
 chosen_years <- dt[end_year >= start & start_year <= end]
