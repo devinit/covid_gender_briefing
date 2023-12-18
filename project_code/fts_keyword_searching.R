@@ -6,43 +6,7 @@ suppressPackageStartupMessages(lapply(c("data.table", "jsonlite","rstudioapi"), 
 setwd(dirname(getActiveDocumentContext()$path))
 setwd("..")
 
-fts <- fread("project_data/fts_flows.csv", encoding = "UTF-8")
-
-keep <- c(
-  "id"
-  ,
-  "description"
-  ,
-  "year"
-  ,
-  "flowType"
-  ,
-  "keywords"
-  ,
-  "sector"
-  ,
-  "multisector"
-  ,
-  "amountUSD_defl"
-  ,
-  "sourceObjects_Location.name"
-  ,
-  "sourceObjects_Organization.name"
-  ,
-  "destinationObjects_Location.name"
-  ,
-  "destinationObjects_GlobalCluster.name"
-  ,
-  "destinationObjects_Cluster.name"
-  ,
-  "destinationObjects_Organization.name"
-  ,
-  "destination_ngotype"
-  ,
-  "destinationObjects_Plan.name"
-)
-
-fts <- fts[, ..keep]
+fts <- fread("project_data/fts_flows_dummies.csv", encoding = "UTF-8")
 
 fts <- fts[as.character(year) >= 2014]
 
@@ -272,5 +236,5 @@ fts[sector %in% sector.decode$sector, sector := merge(fts[sector %in% sector.dec
 fts[sector == "", sector := "Unspecified"]
 #fts[grepl("Protection", sector), sector := "Protection"]
 
-write.csv(fts, "fts_output.csv", fileEncoding = "UTF-8", row.names = F)
+write.csv(fts, "fts_output_dummies.csv", fileEncoding = "UTF-8", row.names = F)
 #
